@@ -1,0 +1,11 @@
+torch>=2.11.0
+numpy>=1.23.0
+pandas>=1.5.0
+matplotlib
+# HuggingFace ecosystem (used in pretrained_bert.py)
+transformers>=4.30.0
+sentence-transformers>=2.2.2
+
+# Optional but commonly needed
+scikit-learn>=1.2.0
+tqdm>=4.65.0

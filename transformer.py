@@ -1,4 +1,4 @@
-
+import math
 import torch
 import torch.nn as nn
 import numpy as np
@@ -26,7 +26,7 @@ class TransformerQA(nn.Module):
         pad_token_id=0,
         start_token_id=1,
         end_token_id=2,
-        max_seq_len=512
+        max_seq_len=100
     ):
         super().__init__()
         
@@ -105,7 +105,7 @@ class TransformerQA(nn.Module):
         #     (batch, seq_len, 256) float tensor with position information
 
         emb = self.embedding(token_ids)
-
+        emb = emb * math.sqrt(self.hidden_dim)
         emb = self.pos_encoding(emb)
     
         emb = self.dropout(emb)
@@ -135,7 +135,7 @@ class TransformerQA(nn.Module):
         src_mask_4d = src_mask.unsqueeze(1).unsqueeze(1)  # (batch_size, 1, 1, src_len)
         
         # Encode
-        encoder_output = self.encoder(src_emb, mask=src_mask)
+        encoder_output = self.encoder(src_emb, mask=src_mask_4d)
         
         return encoder_output,src_mask_4d
     
@@ -225,16 +225,16 @@ class TransformerQA(nn.Module):
 
 
         if beam_width == 1:
-            return self._greedy_decode(
-        encoder_output, src_mask_4d,
-        max_length, temperature, repetition_penalty, device
-        )
+            ids = self._greedy_decode(
+                encoder_output, src_mask_4d,
+                max_length, temperature, repetition_penalty, device
+            )
         else:
-            return self._beam_search(
-                encoder_output, src_mask_4d, tokenizer,
+            ids = self._beam_search(
+                encoder_output, src_mask_4d,
                 max_length, beam_width, repetition_penalty, device
             )
-        ids = self._greedy_decode(...)
+        
         text = tokenizer.decode(ids)
         return ids, text
 
@@ -292,7 +292,7 @@ class TransformerQA(nn.Module):
             generated.append(next_token)
 
         # Remove <SOS> from the beginning before returning
-        result_ids = generated[1:]  # remove start token
+        result_ids = [t for t in generated[1:] if t != self.start_token_id]
 
         # # Decode token ids back to text using tokenizer
         # generated_text = tokenizer.decode(result_ids)
