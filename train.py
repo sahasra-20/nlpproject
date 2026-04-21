@@ -10,25 +10,27 @@ except ImportError:
     # Fallback if transformer is completely broken
     TransformerQA = None
 
-def get_dummy_data(config, num_samples=100):
-    """Generates mock data since Person 1 (preprocess) is missing."""
-    src = torch.randint(3, config.vocab_size, (num_samples, 15))
-    tgt = torch.randint(3, config.vocab_size, (num_samples, 20))
-    # inject start/end tokens to mock realistic targets
-    tgt[:, 0] = config.start_token_id
-    tgt[:, -1] = config.end_token_id
-    return src, tgt
+from data_loader import get_dataloader
 
-def evaluate_accuracy(model, src, tgt, config):
-    """Basic evaluation utility to check accuracy of the model on a mock batch."""
+def evaluate_accuracy(model, dataloader, device):
+    """Basic evaluation utility to check accuracy of the model on the dataset."""
     model.eval()
+    correct = 0
+    total = 0
     with torch.no_grad():
-        logits = model(src, tgt)
-        # logits: (batch, seq_len, vocab_size)
-        preds = logits.argmax(dim=-1)
-        correct = (preds == tgt).sum().item()
-        total = tgt.numel()
-    return correct / total
+        for src, tgt in dataloader:
+            src, tgt = src.to(device), tgt.to(device)
+            decoder_input = tgt[:, :-1]
+            target = tgt[:, 1:]
+            logits = model(src, decoder_input)
+            
+            preds = logits.argmax(dim=-1)
+            # Mask out padding
+            pad_mask = (target != 0)
+            correct += ((preds == target) & pad_mask).sum().item()
+            total += pad_mask.sum().item()
+            
+    return correct / max(total, 1)
 
 def train_pipeline():
     print("--- Starting Training Pipeline ---")
@@ -39,6 +41,17 @@ def train_pipeline():
     config = Config()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
+    # Load Embeddings
+    print("Loading pre-trained BERT embeddings...")
+    import numpy as np
+    import os
+    try:
+        embeddings = np.load("models/embeddings_bert_static.npy")
+        print("Successfully loaded pre-trained embeddings.")
+    except FileNotFoundError:
+        print("Embeddings not found! (Did pretrained_bert finish?) Falling back to random initialization.")
+        embeddings = None
+    
     # Init model
     model = TransformerQA(
         vocab_size=config.vocab_size,
@@ -48,34 +61,47 @@ def train_pipeline():
         num_heads=config.num_heads,
         ff_dim=config.ff_dim,
         dropout=config.dropout,
-        max_seq_len=config.max_seq_len
+        max_seq_len=config.max_seq_len,
+        embeddings=embeddings
     ).to(device)
     
     optimizer = optim.Adam(model.parameters(), lr=config.lr)
     criterion = nn.CrossEntropyLoss(ignore_index=config.pad_token_id)
     
-    # Dummy data
-    print("Generating mock data (Person 1 preprocess is pending)...")
-    src, tgt = get_dummy_data(config, num_samples=config.batch_size * 5)
-    src, tgt = src.to(device), tgt.to(device)
+    # Load real data
+    print("Loading actual dataset from data.csv...")
+    dataloader, tokenizer = get_dataloader('data.csv', config)
     
     print(f"Training on device: {device} for {config.epochs} epochs")
     
     for epoch in range(config.epochs):
         model.train()
-        optimizer.zero_grad()
+        total_loss = 0
+        batches = 0
         
-        logits = model(src, tgt)
-        
-        # Flatten for loss
-        # logits: (B, S, V) -> (B*S, V)
-        loss = criterion(logits.view(-1, config.vocab_size), tgt.view(-1))
-        
-        loss.backward()
-        optimizer.step()
-        
-        acc = evaluate_accuracy(model, src, tgt, config)
-        print(f"Epoch {epoch+1}/{config.epochs} | Loss: {loss.item():.4f} | Mock Acc: {acc*100:.2f}%")
+        for batch_src, batch_tgt in dataloader:
+            batch_src, batch_tgt = batch_src.to(device), batch_tgt.to(device)
+            
+            optimizer.zero_grad()
+            
+            decoder_input = batch_tgt[:, :-1]
+            target = batch_tgt[:, 1:]
+            logits = model(batch_src, decoder_input)
+            
+            # Flatten for loss
+            loss = criterion(logits.reshape(-1, config.vocab_size), target.reshape(-1))
+            
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            batches += 1
+            
+            if batches % 50 == 0:
+                print(f"  [Epoch {epoch+1}] Batch {batches} | Loss: {loss.item():.4f}")
+            
+        acc = evaluate_accuracy(model, dataloader, device)
+        avg_loss = total_loss / max(batches, 1)
+        print(f"Epoch {epoch+1}/{config.epochs} | Avg Loss: {avg_loss:.4f} | Acc: {acc*100:.2f}%")
         
     # Save model
     torch.save(model.state_dict(), config.model_save_path)

@@ -120,7 +120,7 @@ def load_bert_static_embeddings(
 
     # Optional linear projection 768 → project_to_dim
     if project_to_dim and project_to_dim != bert_dim:
-        print(f"  Projecting {bert_dim} → {project_to_dim} dims...")
+        print(f"  Projecting {bert_dim} to {project_to_dim} dims...")
         # Simple random projection (preserves approximate distances)
         proj = np.random.randn(bert_dim, project_to_dim).astype(np.float32)
         proj /= np.linalg.norm(proj, axis=0, keepdims=True)
@@ -130,7 +130,7 @@ def load_bert_static_embeddings(
 
     os.makedirs(os.path.dirname(embeddings_path), exist_ok=True)
     np.save(embeddings_path, final_matrix)
-    print(f"Saved → {embeddings_path}  shape={final_matrix.shape}")
+    print(f"Saved to {embeddings_path}  shape={final_matrix.shape}")
 
     return final_matrix
 
@@ -242,14 +242,14 @@ def load_sbert_contextual_embeddings(
 
     # Optional projection
     if project_to_dim and project_to_dim != hidden_dim:
-        print(f"  Projecting {hidden_dim} → {project_to_dim} dims...")
+        print(f"  Projecting {hidden_dim} to {project_to_dim} dims...")
         proj = np.random.randn(hidden_dim, project_to_dim).astype(np.float32)
         proj /= np.linalg.norm(proj, axis=0, keepdims=True)
         final_matrix = (final_matrix @ proj).astype(np.float32)
 
     os.makedirs(os.path.dirname(embeddings_path), exist_ok=True)
     np.save(embeddings_path, final_matrix)
-    print(f"Saved → {embeddings_path}  shape={final_matrix.shape}")
+    print(f"Saved to {embeddings_path}  shape={final_matrix.shape}")
 
     return final_matrix
 
@@ -257,10 +257,17 @@ def load_sbert_contextual_embeddings(
 # ── usage example ─────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import pickle
-
-    with open("models/tokenizer.pkl", "rb") as f:
-        tokenizer = pickle.load(f)
+    from data_loader import SimpleTokenizer
+    from config import Config
+    import pandas as pd
+    
+    config = Config()
+    tokenizer = SimpleTokenizer(config)
+    
+    # Load DF to build vocab
+    print("Building vocabulary from data.csv...")
+    df = pd.read_csv("data.csv").dropna(subset=["question", "answer"])
+    tokenizer.build_vocab(df)
 
     # ── Option A: fast static BERT embeddings ─────────────────────────────────
     embeddings = load_bert_static_embeddings(
@@ -269,15 +276,6 @@ if __name__ == "__main__":
         embeddings_path="models/embeddings_bert_static.npy",
         project_to_dim=256,     # match your transformer hidden_dim
     )
-
-    # ── Option B: contextual SBERT embeddings (slower, better quality) ────────
-    # embeddings = load_sbert_contextual_embeddings(
-    #     tokenizer=tokenizer,
-    #     corpus_path="agri_corpus.txt",
-    #     sbert_model_name="sentence-transformers/all-MiniLM-L6-v2",
-    #     embeddings_path="models/embeddings_sbert.npy",
-    #     project_to_dim=256,
-    # )
 
     print(f"\nFinal matrix: {embeddings.shape}")
     print("Done. Use the saved .npy path in transformer.py")

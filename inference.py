@@ -7,26 +7,7 @@ try:
 except ImportError:
     TransformerQA = None
 
-class MockTokenizer:
-    """Mock Tokenizer since Person 1's tokenizer is missing."""
-    def __init__(self, config):
-        self.config = config
-    
-    def encode(self, text):
-        # Fake encode
-        return [self.config.start_token_id, 10, 20, 30, self.config.end_token_id]
-        
-    def decode(self, ids):
-        # Fake decode
-        if isinstance(ids, torch.Tensor):
-            ids = ids.tolist()
-        words = []
-        for i in ids:
-            if i == self.config.pad_token_id: continue
-            if i == self.config.start_token_id: words.append("<SOS>")
-            elif i == self.config.end_token_id: words.append("<EOS>")
-            else: words.append(f"word_{i}")
-        return " ".join(words)
+from data_loader import SimpleTokenizer
 
 def generate_answer(question_text):
     print(f"--- Inference ---")
@@ -37,7 +18,15 @@ def generate_answer(question_text):
         print("TransformerQA unavailable.")
         return
         
-    tokenizer = MockTokenizer(config)
+    import pandas as pd
+    tokenizer = SimpleTokenizer(config)
+    # Ensure vocabulary exists
+    import os
+    if not os.path.exists(tokenizer.vocab_file):
+        df = pd.read_csv('data.csv').dropna(subset=['question', 'answer'])
+        tokenizer.build_vocab(df)
+    else:
+        tokenizer.build_vocab(None)
     
     model = TransformerQA(
         vocab_size=config.vocab_size,

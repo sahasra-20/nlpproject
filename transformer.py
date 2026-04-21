@@ -1,4 +1,4 @@
-
+import math
 import torch
 import torch.nn as nn
 import numpy as np
@@ -26,7 +26,7 @@ class TransformerQA(nn.Module):
         pad_token_id=0,
         start_token_id=1,
         end_token_id=2,
-        max_seq_len=512
+        max_seq_len=100
     ):
         super().__init__()
         
@@ -105,7 +105,7 @@ class TransformerQA(nn.Module):
         #     (batch, seq_len, 256) float tensor with position information
 
         emb = self.embedding(token_ids)
-
+        emb = emb * math.sqrt(self.hidden_dim)
         emb = self.pos_encoding(emb)
     
         emb = self.dropout(emb)
@@ -135,7 +135,7 @@ class TransformerQA(nn.Module):
         src_mask_4d = src_mask.unsqueeze(1).unsqueeze(1)  # (batch_size, 1, 1, src_len)
         
         # Encode
-        encoder_output = self.encoder(src_emb, mask=src_mask)
+        encoder_output = self.encoder(src_emb, mask=src_mask_4d)
         
         return encoder_output,src_mask_4d
     
@@ -225,16 +225,16 @@ class TransformerQA(nn.Module):
 
 
         if beam_width == 1:
-            return self._greedy_decode(
-        encoder_output, src_mask_4d,
-        max_length, temperature, repetition_penalty, device
-        )
+            ids = self._greedy_decode(
+                encoder_output, src_mask_4d,
+                max_length, temperature, repetition_penalty, device
+            )
         else:
-            return self._beam_search(
-                encoder_output, src_mask_4d, tokenizer,
+            ids = self._beam_search(
+                encoder_output, src_mask_4d,
                 max_length, beam_width, repetition_penalty, device
             )
-        ids = self._greedy_decode(...)
+        
         text = tokenizer.decode(ids)
         return ids, text
 
@@ -292,7 +292,7 @@ class TransformerQA(nn.Module):
             generated.append(next_token)
 
         # Remove <SOS> from the beginning before returning
-        result_ids = generated[1:]  # remove start token
+        result_ids = [t for t in generated[1:] if t != self.start_token_id]
 
         # # Decode token ids back to text using tokenizer
         # generated_text = tokenizer.decode(result_ids)
@@ -384,7 +384,7 @@ if __name__ == "__main__":
     B, S_src, S_tgt, V, D = 4, 15, 20, 8000, 256
 
     print("=" * 55)
-    print("TransformerQA — self test")
+    print("TransformerQA - self test")
     print("=" * 55)
 
     # ── Random init ──────────────────────────────────────────────
@@ -397,7 +397,7 @@ if __name__ == "__main__":
     logits = model(src, tgt)
     assert logits.shape == (B, S_tgt, V), f"Wrong shape: {logits.shape}"
     assert not torch.isnan(logits).any(), "NaN in logits"
-    print(f"forward(): {src.shape}, {tgt.shape} → {logits.shape}  ✓")
+    print(f"forward(): {src.shape}, {tgt.shape} to {logits.shape}  OK")
 
     # ── Word2Vec init ─────────────────────────────────────────────
     w2v = np.random.randn(V, D).astype(np.float32)
@@ -406,14 +406,14 @@ if __name__ == "__main__":
     model_w2v = TransformerQA(vocab_size=V, hidden_dim=D, embeddings=w2v)
     logits2   = model_w2v(src, tgt)
     assert not torch.isnan(logits2).any(), "NaN with Word2Vec init"
-    print(f"Word2Vec init:  ✓")
+    print(f"Word2Vec init:  OK")
 
     # ── src_mask flow (critical bug fix) ─────────────────────────
     enc_out, src_mask_4d = model.encode(src)
     assert src_mask_4d.shape == (B, 1, 1, S_src)
     dec_logits = model.decode(tgt, enc_out, src_mask_4d)
     assert not torch.isnan(dec_logits).any(), "NaN — cross-attention broken"
-    print(f"src_mask flow:  ✓  (cross-attention working)")
+    print(f"src_mask flow:  OK  (cross-attention working)")
 
     # ── Greedy generation ─────────────────────────────────────────
     class FakeTok:
@@ -422,11 +422,11 @@ if __name__ == "__main__":
     single_src = torch.randint(3, V, (1, S_src))
     ids, text = model.generate(single_src, FakeTok(), max_length=15, beam_width=1)
     assert model.start_token_id not in ids, "<start> should be removed"
-    print(f"Greedy:         ✓  ids={ids[:4]}...")
+    print(f"Greedy:         OK  ids={ids[:4]}...")
 
     # ── Beam search ───────────────────────────────────────────────
     ids_b, text_b = model.generate(single_src, FakeTok(), max_length=15, beam_width=4)
-    print(f"Beam search:    ✓  ids={ids_b[:4]}...")
+    print(f"Beam search:    OK  ids={ids_b[:4]}...")
 
     total = sum(p.numel() for p in model.parameters())
     print(f"\nTotal parameters: {total:,}")

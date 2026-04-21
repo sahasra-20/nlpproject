@@ -16,9 +16,10 @@ class Config:
     pad_token_id = 0
     start_token_id = 1
     end_token_id = 2
+    unk_token_id = 3
 
     # Training parameters
-    batch_size = 8
+    batch_size = 32
     epochs = 5
     lr = 1e-4
 

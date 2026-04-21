@@ -225,4 +225,4 @@ if __name__ == "__main__":
     enc_output = encoder(x)
     print(f"Encoder output shape: {enc_output.shape}")
 
-    print("✓ Encoder components working independently!")
+    print("Encoder components working independently!")
