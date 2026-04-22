@@ -20,7 +20,7 @@ class Config:
 
     # Training parameters
     batch_size = 32
-    epochs = 5
+    epochs = 25
     lr = 1e-4
 
     # File paths

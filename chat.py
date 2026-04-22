@@ -74,8 +74,19 @@ def main():
                 if isinstance(result_ids, tuple):
                     result_ids = result_ids[0]
                 
+                # --- ADD THIS LINE ---
+                print(f"[Debug] Raw IDs: {result_ids}")
+                
                 answer = tokenizer.decode(result_ids)
                 print(f"Bot    > {answer}")
+            # # Generate
+            # with torch.no_grad():
+            #     result_ids = model.generate(src_ids, tokenizer, max_length=20, beam_width=1)
+            #     if isinstance(result_ids, tuple):
+            #         result_ids = result_ids[0]
+                
+            #     answer = tokenizer.decode(result_ids)
+            #     print(f"Bot    > {answer}")
                 
         except KeyboardInterrupt:
             print("\nGoodbye!")

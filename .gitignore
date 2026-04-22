@@ -22,9 +22,9 @@ models/
 *.npy
 
 # Dataset files
-*.csv
+# *.csv
 *.tsv
-*.json
+# *.json
 
 # Logs
 logs/
