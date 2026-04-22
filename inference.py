@@ -28,6 +28,12 @@ def generate_answer(question_text):
     else:
         tokenizer.build_vocab(None)
     
+    import numpy as np
+    try:
+        embeddings = np.load("models/embeddings_bert_static.npy")
+    except FileNotFoundError:
+        embeddings = None
+        
     model = TransformerQA(
         vocab_size=config.vocab_size,
         hidden_dim=config.hidden_dim,
@@ -36,7 +42,8 @@ def generate_answer(question_text):
         num_heads=config.num_heads,
         ff_dim=config.ff_dim,
         dropout=config.dropout,
-        max_seq_len=config.max_seq_len
+        max_seq_len=config.max_seq_len,
+        embeddings=embeddings
     ).to(device)
     
     try:

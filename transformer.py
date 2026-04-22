@@ -45,6 +45,7 @@ class TransformerQA(nn.Module):
                 f"Word2Vec embedding shape {embeddings.shape} "
                 f"must match (vocab_size={vocab_size}, hidden_dim={hidden_dim})"
             )
+            # assert is used to check if a condition is true while debugging
 
             self.embedding = nn.Embedding.from_pretrained(
                 torch.from_numpy(embeddings).float(),
@@ -270,6 +271,10 @@ class TransformerQA(nn.Module):
                     next_logits[prev_token] *= repetition_penalty
             # This makes already-generated tokens less likely, not impossible
 
+            # Prevent generating EOS at the very first step
+            if step == 0:
+                next_logits[self.end_token_id] = float('-inf')
+
             # Apply temperature scaling
             # temperature < 1.0: sharper distribution (more confident, less diverse)
             # temperature > 1.0: flatter distribution (more random, more diverse)
@@ -329,6 +334,10 @@ class TransformerQA(nn.Module):
                         next_logits[prev_token] /= repetition_penalty
                     else:
                         next_logits[prev_token] *= repetition_penalty
+
+                # Prevent generating EOS at the very first step
+                if step == 0:
+                    next_logits[self.end_token_id] = float('-inf')
 
                 # Convert to log probabilities
                 log_probs = torch.log_softmax(next_logits, dim=-1)

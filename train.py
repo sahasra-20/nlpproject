@@ -10,7 +10,7 @@ except ImportError:
     # Fallback if transformer is completely broken
     TransformerQA = None
 
-from data_loader import get_dataloader
+from data_loader import get_dataloaders
 
 def evaluate_accuracy(model, dataloader, device):
     """Basic evaluation utility to check accuracy of the model on the dataset."""
@@ -69,17 +69,22 @@ def train_pipeline():
     criterion = nn.CrossEntropyLoss(ignore_index=config.pad_token_id)
     
     # Load real data
-    print("Loading actual dataset from data.csv...")
-    dataloader, tokenizer = get_dataloader('data.csv', config)
+    print("Loading actual dataset from data.csv and splitting (95% Train / 5% Val)...")
+    train_loader, val_loader, tokenizer = get_dataloaders('data.csv', config, train_ratio=0.95)
     
     print(f"Training on device: {device} for {config.epochs} epochs")
+    
+    import pandas as pd
+    history = []
     
     for epoch in range(config.epochs):
         model.train()
         total_loss = 0
         batches = 0
+        train_correct = 0
+        train_total = 0
         
-        for batch_src, batch_tgt in dataloader:
+        for batch_src, batch_tgt in train_loader:
             batch_src, batch_tgt = batch_src.to(device), batch_tgt.to(device)
             
             optimizer.zero_grad()
@@ -93,15 +98,33 @@ def train_pipeline():
             
             loss.backward()
             optimizer.step()
+            
+            # Calculate batch accuracy
+            with torch.no_grad():
+                preds = logits.argmax(dim=-1)
+                pad_mask = (target != config.pad_token_id)
+                train_correct += ((preds == target) & pad_mask).sum().item()
+                train_total += pad_mask.sum().item()
+                
             total_loss += loss.item()
             batches += 1
             
             if batches % 50 == 0:
                 print(f"  [Epoch {epoch+1}] Batch {batches} | Loss: {loss.item():.4f}")
             
-        acc = evaluate_accuracy(model, dataloader, device)
+        train_acc = train_correct / max(train_total, 1)
+        val_acc = evaluate_accuracy(model, val_loader, device)
         avg_loss = total_loss / max(batches, 1)
-        print(f"Epoch {epoch+1}/{config.epochs} | Avg Loss: {avg_loss:.4f} | Acc: {acc*100:.2f}%")
+        print(f"Epoch {epoch+1}/{config.epochs} | Avg Loss: {avg_loss:.4f} | Train Acc: {train_acc*100:.2f}% | Val Acc: {val_acc*100:.2f}%")
+        
+        # Save history
+        history.append({
+            'epoch': epoch + 1,
+            'train_loss': avg_loss,
+            'train_acc': train_acc,
+            'val_acc': val_acc
+        })
+        pd.DataFrame(history).to_csv('training_history.csv', index=False)
         
     # Save model
     torch.save(model.state_dict(), config.model_save_path)

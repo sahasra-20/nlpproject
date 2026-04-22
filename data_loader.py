@@ -103,7 +103,9 @@ class QADataset(Dataset):
         return torch.tensor(q_ids, dtype=torch.long), torch.tensor(a_ids, dtype=torch.long)
 
 
-def get_dataloader(csv_file, config):
+from torch.utils.data import random_split
+
+def get_dataloaders(csv_file, config, train_ratio=0.95):
     tokenizer = SimpleTokenizer(config)
     
     # Load DF to build vocab
@@ -112,6 +114,16 @@ def get_dataloader(csv_file, config):
     
     dataset = QADataset(csv_file, tokenizer, config)
     
-    # Drop last to avoid batch size mismatches during training loops if dataset isn't perfectly divisible
-    dataloader = DataLoader(dataset, batch_size=config.batch_size, shuffle=True, drop_last=True)
-    return dataloader, tokenizer
+    # Calculate sizes
+    train_size = int(len(dataset) * train_ratio)
+    val_size = len(dataset) - train_size
+    
+    # Split dataset
+    generator = torch.Generator().manual_seed(42)
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size], generator=generator)
+    
+    # Create dataloaders
+    train_loader = DataLoader(train_dataset, batch_size=config.batch_size, shuffle=True, drop_last=True)
+    val_loader = DataLoader(val_dataset, batch_size=config.batch_size, shuffle=False, drop_last=True)
+    
+    return train_loader, val_loader, tokenizer
