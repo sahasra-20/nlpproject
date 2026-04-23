@@ -106,10 +106,8 @@ class TransformerQA(nn.Module):
         #     (batch, seq_len, hidden_dim) float tensor with position information
 
         emb = self.embedding(token_ids)
-        # Only scale randomly-initialized embeddings; Word2Vec embeddings are
-        # already unit-normalized so scaling by sqrt(d) would blow up magnitudes.
-        if not self.use_word2vec:
-            emb = emb * math.sqrt(self.hidden_dim)
+        # Always scale embeddings so positional encodings don't dominate
+        emb = emb * math.sqrt(self.hidden_dim)
         emb = self.pos_encoding(emb)
     
         emb = self.dropout(emb)

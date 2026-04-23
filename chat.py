@@ -29,6 +29,9 @@ def main():
     else:
         tokenizer.build_vocab(None)
         
+    import numpy as np
+    dummy_embeddings = np.zeros((config.vocab_size, config.hidden_dim), dtype=np.float32)
+    
     # 2. Init Model
     model = TransformerQA(
         vocab_size=config.vocab_size,
@@ -38,7 +41,8 @@ def main():
         num_heads=config.num_heads,
         ff_dim=config.ff_dim,
         dropout=config.dropout,
-        max_seq_len=config.max_seq_len
+        max_seq_len=getattr(config, 'rag_max_seq_len', config.max_seq_len),
+        embeddings=dummy_embeddings
     ).to(device)
     
     # 3. Load Weights

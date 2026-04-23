@@ -179,7 +179,7 @@ class RAGQADataset(Dataset):
         rag_ratio:  float = 0.20,
         seed:       int   = 42,
     ):
-        self.df        = pd.read_csv(csv_file).dropna(subset=["question", "answer"])
+        self.df        = pd.read_csv(csv_file).dropna(subset=["question", "answer"])# remove rows with missing Q&A pairs  
         self.tokenizer = tokenizer
         self.config    = config
         self.retriever = retriever

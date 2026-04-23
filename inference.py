@@ -36,7 +36,8 @@ def _load_model_and_tokenizer(config: Config, device: torch.device):
     if config.embedding_mode == "word2vec":
         emb_path = getattr(config, "word2vec_emb_path", "models/embeddings_word2vec.npy")
 
-    embeddings = None
+    # Always use dummy embeddings if real ones aren't found to prevent weight tying
+    embeddings = np.zeros((config.vocab_size, config.hidden_dim), dtype=np.float32)
     if config.embedding_mode != "random" and os.path.exists(emb_path):
         embeddings = np.load(emb_path)
 

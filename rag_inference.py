@@ -39,6 +39,9 @@ def load_model_and_tokenizer(config: Config, device: torch.device):
     else:
         raise FileNotFoundError("vocab.json not found — run training first.")
 
+    import numpy as np
+    dummy_embeddings = np.zeros((config.vocab_size, config.hidden_dim), dtype=np.float32)
+
     model = TransformerQA(
         vocab_size          = config.vocab_size,
         hidden_dim          = config.hidden_dim,
@@ -51,6 +54,7 @@ def load_model_and_tokenizer(config: Config, device: torch.device):
         pad_token_id        = config.pad_token_id,
         start_token_id      = config.start_token_id,
         end_token_id        = config.end_token_id,
+        embeddings          = dummy_embeddings,
     ).to(device)
 
     if os.path.exists(config.model_save_path):

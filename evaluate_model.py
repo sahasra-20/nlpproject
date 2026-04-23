@@ -32,7 +32,7 @@ def run_evaluation():
     try:
         embeddings = np.load("models/embeddings_bert_static.npy")
     except FileNotFoundError:
-        embeddings = None
+        embeddings = np.zeros((config.vocab_size, config.hidden_dim), dtype=np.float32)
         
     model = TransformerQA(
         vocab_size=config.vocab_size,
