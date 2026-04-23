@@ -62,6 +62,9 @@ class MultiHeadAttention(nn.Module):
 
         # Softmax attention weights
         attention_weights = torch.softmax(scores, dim=-1)
+        # Guard against NaN that arises when every position in a row is masked
+        # (all -inf scores): softmax(-inf,...,-inf) = NaN → replace with 0.
+        attention_weights = torch.nan_to_num(attention_weights, nan=0.0)
         attention_weights = self.dropout(attention_weights)
 
         # Apply attention to values

@@ -46,10 +46,21 @@ def run_evaluation():
         embeddings=embeddings
     ).to(device)
     
-    try:
-        model.load_state_dict(torch.load(config.model_save_path, map_location=device))
-        print(f"Loaded trained model from {config.model_save_path}")
-    except FileNotFoundError:
+    if os.path.exists(config.model_save_path):
+        state     = torch.load(config.model_save_path, map_location=device)
+        # Drop PE buffers
+        state.pop("pos_encoding.pe", None)
+        state.pop("decoder.pos_encoding.pe", None)
+        own_state  = model.state_dict()
+        compatible = {k: v for k, v in state.items()
+                      if k in own_state and v.shape == own_state[k].shape}
+        skipped    = [k for k in state if k not in compatible]
+        model.load_state_dict(compatible, strict=False)
+        print(f"Loaded trained model from {config.model_save_path} "
+              f"({len(compatible)}/{len(state)} tensors)")
+        if skipped:
+            print(f"  (skipped shape-mismatched keys — retrain to fix): {skipped}")
+    else:
         print("No trained model found! Performance will be zero/random.")
         
     model.eval()

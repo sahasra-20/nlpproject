@@ -43,8 +43,18 @@ def main():
     
     # 3. Load Weights
     if os.path.exists(config.model_save_path):
-        model.load_state_dict(torch.load(config.model_save_path, map_location=device))
-        print(f"Loaded trained weights from '{config.model_save_path}'!")
+        state     = torch.load(config.model_save_path, map_location=device)
+        state.pop("pos_encoding.pe", None)
+        state.pop("decoder.pos_encoding.pe", None)
+        own_state  = model.state_dict()
+        compatible = {k: v for k, v in state.items()
+                      if k in own_state and v.shape == own_state[k].shape}
+        skipped    = [k for k in state if k not in compatible]
+        model.load_state_dict(compatible, strict=False)
+        print(f"Loaded trained weights from '{config.model_save_path}'! "
+              f"({len(compatible)}/{len(state)} tensors)")
+        if skipped:
+            print(f"  (skipped shape-mismatched keys — retrain to fix): {skipped}")
     else:
         print(f"WARNING: '{config.model_save_path}' not found!")
         print("The model is untrained. Responses will be random garbage.")

@@ -103,14 +103,17 @@ class TransformerQA(nn.Module):
         #     token_ids: (batch, seq_len) integer tensor
 
         # Returns:
-        #     (batch, seq_len, 256) float tensor with position information
+        #     (batch, seq_len, hidden_dim) float tensor with position information
 
         emb = self.embedding(token_ids)
-        emb = emb * math.sqrt(self.hidden_dim)
+        # Only scale randomly-initialized embeddings; Word2Vec embeddings are
+        # already unit-normalized so scaling by sqrt(d) would blow up magnitudes.
+        if not self.use_word2vec:
+            emb = emb * math.sqrt(self.hidden_dim)
         emb = self.pos_encoding(emb)
     
         emb = self.dropout(emb)
-        # emb: (batch, seq_len, 256)
+        # emb: (batch, seq_len, hidden_dim)
 
         return emb
     
@@ -254,11 +257,11 @@ class TransformerQA(nn.Module):
 
             # Get logits for all positions — we only need the LAST position
             logits = self.decode(tgt_ids, encoder_output, src_mask_4d)
-            # logits: (1, current_len, 8000)
+            # logits: (1, current_len, vocab_size)
 
             # Take logits for the LAST position only — this is the next token prediction
             next_logits = logits[0, -1, :].clone()
-            # next_logits: (8000,)
+            # next_logits: (vocab_size,)
 
             # Apply repetition penalty to already-generated tokens
             # WHY? Transformers tend to repeat themselves without this.
@@ -326,7 +329,7 @@ class TransformerQA(nn.Module):
                 tgt = torch.tensor([ids], dtype=torch.long, device=device)
                 logits = self.decode(tgt, encoder_output, src_mask_4d)
                 next_logits = logits[0, -1, :].clone()
-                # next_logits: (8000,)
+                # next_logits: (vocab_size,)
 
                 # Apply repetition penalty
                 for prev_token in set(ids):
