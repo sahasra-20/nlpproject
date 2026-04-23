@@ -38,10 +38,7 @@ def show_walkthrough():
 
         # 1. Tokenizer
         tokenizer = SimpleTokenizer(config)
-        if os.path.exists("vocab.json"):
-            with open("vocab.json") as f: tokenizer.word2id = json.load(f)
-            tokenizer.id2word = {int(v): k for k, v in tokenizer.word2id.items()}
-        else:
+        if not os.path.exists(tokenizer.vocab_file):
             df = pd.read_csv("data.csv").dropna(subset=["question", "answer"])
             tokenizer.build_vocab(df)
         
@@ -101,12 +98,8 @@ def step_index():
 
     # Load tokenizer
     tokenizer = SimpleTokenizer(config)
-    if os.path.exists("vocab.json"):
-        with open("vocab.json") as f:
-            tokenizer.word2id = json.load(f)
-        tokenizer.id2word = {int(v): k for k, v in tokenizer.word2id.items()}
-    else:
-        print("  vocab.json not found — run training first.")
+    if not os.path.exists(tokenizer.vocab_file):
+        print(f"  {tokenizer.vocab_file} not found — run training first.")
         return
 
     # Load model

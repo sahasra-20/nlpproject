@@ -32,12 +32,8 @@ from rag_retriever import RAGRetriever, format_rag_input, CHUNK_FILE, INDEX_FILE
 
 def load_model_and_tokenizer(config: Config, device: torch.device):
     tokenizer = SimpleTokenizer(config)
-    if os.path.exists("vocab.json"):
-        with open("vocab.json") as f:
-            tokenizer.word2id = json.load(f)
-        tokenizer.id2word = {int(v): k for k, v in tokenizer.word2id.items()}
-    else:
-        raise FileNotFoundError("vocab.json not found — run training first.")
+    if not os.path.exists(tokenizer.vocab_file):
+        raise FileNotFoundError(f"{tokenizer.vocab_file} not found — run training first.")
 
     import numpy as np
     dummy_embeddings = np.zeros((config.vocab_size, config.hidden_dim), dtype=np.float32)
@@ -118,13 +114,7 @@ def tokenise_rag_input(
     If context_texts is empty, returns the plain question.
     """
     raw = format_rag_input(question, context_texts)
-    tokens = raw.lower().split()
-
-    # Look up token IDs (handles [CTX] and [Q] which are in word2id)
-    ids = [
-        tokenizer.word2id.get(tok, config.unk_token_id)
-        for tok in tokens
-    ]
+    ids = tokenizer.encode(raw)
 
     # Truncate / pad to rag_max_seq_len
     max_len = config.rag_max_seq_len

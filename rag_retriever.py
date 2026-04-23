@@ -297,11 +297,8 @@ if __name__ == "__main__":
     config    = Config()
     tokenizer = SimpleTokenizer(config)
 
-    import json as _json
-    if os.path.exists("vocab.json"):
-        with open("vocab.json") as f:
-            tokenizer.word2id = _json.load(f)
-        tokenizer.id2word = {int(v): k for k, v in tokenizer.word2id.items()}
+    if not os.path.exists(tokenizer.vocab_file):
+        print(f"Warning: {tokenizer.vocab_file} not found")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model  = TransformerQA(

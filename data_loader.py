@@ -5,88 +5,94 @@ import torch
 import pandas as pd
 from collections import Counter
 from torch.utils.data import Dataset, DataLoader
+from tokenizers import Tokenizer
+from tokenizers.models import BPE
+from tokenizers.trainers import BpeTrainer
+from tokenizers.pre_tokenizers import Whitespace
 
 class SimpleTokenizer:
     def __init__(self, config):
         self.config = config
-        self.word2id = {
-            "<PAD>": config.pad_token_id,   # 0
-            "<SOS>": config.start_token_id,  # 1
-            "<EOS>": config.end_token_id,    # 2
-            "<UNK>": config.unk_token_id,    # 3
-            # RAG separator tokens — always in vocab
-            "[CTX]": 4,
-            "[Q]":   5,
-        }
-        self.id2word = {v: k for k, v in self.word2id.items()}
-        self.vocab_file = "vocab.json"
+        self.vocab_file = "vocab_bpe.json"
+        self.tokenizer = None
         
+        self.special_tokens = ["<PAD>", "<SOS>", "<EOS>", "<UNK>", "[CTX]", "[Q]"]
+        # Dummy dicts to maintain compatibility with scripts referencing word2id directly
+        self._word2id = {}
+        self._id2word = {}
+        
+    @property
+    def word2id(self):
+        if not self._word2id and self.tokenizer:
+            self._word2id = self.tokenizer.get_vocab()
+        return self._word2id
+
+    @property
+    def id2word(self):
+        if not self._id2word and self.tokenizer:
+            self._id2word = {v: k for k, v in self.tokenizer.get_vocab().items()}
+        return self._id2word
+
     def get_vocab_size(self):
         return self.config.vocab_size
         
     def build_vocab(self, dataframe):
-        """Builds vocabulary from a pandas DataFrame containing 'question' and 'answer' columns."""
+        """Builds BPE vocabulary from a pandas DataFrame containing 'question' and 'answer' columns."""
         if os.path.exists(self.vocab_file):
-            with open(self.vocab_file, 'r') as f:
-                cached = json.load(f)
-            # Validate: if the saved vocab is smaller than config.vocab_size,
-            # it was built with an old config and must be rebuilt.
-            if len(cached) >= self.config.vocab_size:
-                print(f"Loading existing vocabulary from {self.vocab_file} "
-                      f"(size={len(cached)})")
-                self.word2id = cached
-                self.id2word = {int(v): k for k, v in self.word2id.items()}
-                # Always ensure RAG separator tokens are present
-                for tok, tid in (("[CTX]", 4), ("[Q]", 5)):
-                    if tok not in self.word2id:
-                        self.word2id[tok] = tid
-                        self.id2word[tid] = tok
+            self.tokenizer = Tokenizer.from_file(self.vocab_file)
+            if self.tokenizer.get_vocab_size() >= self.config.vocab_size:
+                print(f"Loading existing BPE vocabulary from {self.vocab_file} "
+                      f"(size={self.tokenizer.get_vocab_size()})")
                 return
             else:
-                print(f"[Vocab] Cached vocab size {len(cached)} < "
+                print(f"[Vocab] Cached vocab size {self.tokenizer.get_vocab_size()} < "
                       f"config.vocab_size {self.config.vocab_size}. "
-                      f"Rebuilding …")
+                      f"Rebuilding ...")
                 os.remove(self.vocab_file)
 
-        print("Building new vocabulary from dataset...")
-        all_text = " ".join(dataframe['question'].astype(str) + " " + dataframe['answer'].astype(str))
-        tokens = all_text.lower().split()
+        print("Building new BPE vocabulary from dataset...")
         
-        # Count frequencies
-        word_counts = Counter(tokens)
+        self.tokenizer = Tokenizer(BPE(unk_token="<UNK>"))
+        self.tokenizer.pre_tokenizer = Whitespace()
         
-        # We reserve 6 spots: PAD, SOS, EOS, UNK, [CTX], [Q]
-        max_words = self.config.vocab_size - 6
-        most_common = word_counts.most_common(max_words)
+        trainer = BpeTrainer(
+            vocab_size=self.config.vocab_size,
+            special_tokens=self.special_tokens
+        )
         
-        for idx, (word, _) in enumerate(most_common):
-            # Start assigning IDs after the 6 reserved special tokens
-            token_id = idx + 6
-            self.word2id[word] = token_id
-            self.id2word[token_id] = word
-            
-        # Save for inference
-        with open(self.vocab_file, 'w') as f:
-            json.dump(self.word2id, f)
-        print(f"Saved vocabulary of size {len(self.word2id)} to {self.vocab_file}")
+        # Generator for dataset strings
+        def get_training_corpus():
+            for i in range(0, len(dataframe), 1000):
+                chunk = dataframe.iloc[i:i+1000]
+                for text in chunk['question'].astype(str).tolist() + chunk['answer'].astype(str).tolist():
+                    yield text
+                
+        self.tokenizer.train_from_iterator(get_training_corpus(), trainer=trainer)
+        self.tokenizer.save(self.vocab_file)
+        print(f"Saved BPE vocabulary of size {self.tokenizer.get_vocab_size()} to {self.vocab_file}")
 
     def encode(self, text):
         """Converts a string to a list of token IDs."""
-        tokens = str(text).lower().split()
-        return [self.word2id.get(token, self.config.unk_token_id) for token in tokens]
+        if not self.tokenizer:
+            if os.path.exists(self.vocab_file):
+                self.tokenizer = Tokenizer.from_file(self.vocab_file)
+            else:
+                return []
+        return self.tokenizer.encode(str(text)).ids
 
     def decode(self, ids):
         """Converts a list/tensor of token IDs to a string."""
+        if not self.tokenizer:
+            if os.path.exists(self.vocab_file):
+                self.tokenizer = Tokenizer.from_file(self.vocab_file)
+            else:
+                return ""
         if isinstance(ids, torch.Tensor):
             ids = ids.tolist()
             
-        words = []
-        for idx in ids:
-            if idx == self.config.pad_token_id:
-                continue
-            word = self.id2word.get(idx, "<UNK>")
-            words.append(word)
-        return " ".join(words)
+        # Remove pad tokens before decoding
+        ids = [i for i in ids if i != self.config.pad_token_id]
+        return self.tokenizer.decode(ids)
 
 
 class QADataset(Dataset):
@@ -183,6 +189,7 @@ class RAGQADataset(Dataset):
         self.tokenizer = tokenizer
         self.config    = config
         self.retriever = retriever
+        # A reference to retriever object, typically an instance of a RAGRetriever,imported from rag_retriever.py in this project
         self.rag_ratio = rag_ratio
         self.rng       = np.random.default_rng(seed)
 

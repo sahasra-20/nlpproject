@@ -17,16 +17,7 @@ def _load_model_and_tokenizer(config: Config, device: torch.device):
     """Load tokenizer from vocab.json and model from checkpoint."""
     tokenizer = SimpleTokenizer(config)
 
-    if os.path.exists(tokenizer.vocab_file):
-        with open(tokenizer.vocab_file) as f:
-            tokenizer.word2id = json.load(f)
-        tokenizer.id2word = {int(v): k for k, v in tokenizer.word2id.items()}
-        # Ensure RAG tokens are always present
-        for tok, tid in (("[CTX]", 4), ("[Q]", 5)):
-            if tok not in tokenizer.word2id:
-                tokenizer.word2id[tok] = tid
-                tokenizer.id2word[tid]  = tok
-    else:
+    if not os.path.exists(tokenizer.vocab_file):
         import pandas as pd
         df = pd.read_csv("data.csv").dropna(subset=["question", "answer"])
         tokenizer.build_vocab(df)

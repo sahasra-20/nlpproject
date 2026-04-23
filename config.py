@@ -5,8 +5,8 @@ class Config:
     # ── Model architecture ────────────────────────────────────────────────────
     # Scaled up for 130k-row corpus.
     # Rule: hidden_dim / num_heads = 64 (head_dim stays constant).
-    # Old → New:  vocab 20k→30k, dim 256→384, layers 2→3, heads 4→6, ff 512→1024
-    vocab_size         = 30000   # covers full 130k-row token distribution
+    # Old → New:  vocab 30k→50k, dim 256→384, layers 2→3, heads 4→6, ff 512→1024
+    vocab_size         = 50000   # covers full 130k-row token distribution
     hidden_dim         = 384     # ↑ from 256; head_dim = 384/6 = 64 (unchanged)
     num_encoder_layers = 3       # ↑ from 2
     num_decoder_layers = 3       # ↑ from 2
