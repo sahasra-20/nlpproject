@@ -8,8 +8,8 @@ class Config:
     # Old → New:  vocab 30k→50k, dim 256→384, layers 2→3, heads 4→6, ff 512→1024
     vocab_size         = 50000   # covers full 130k-row token distribution
     hidden_dim         = 384     # ↑ from 256; head_dim = 384/6 = 64 (unchanged)
-    num_encoder_layers = 3       # ↑ from 2
-    num_decoder_layers = 3       # ↑ from 2
+    num_encoder_layers = 4       # ↑ from 3
+    num_decoder_layers = 4       # ↑ from 3
     num_heads          = 6       # ↑ from 4; 384/6 = 64 per head
     ff_dim             = 1024    # ↑ from 512; ~2.7× hidden_dim
     dropout            = 0.15    # ↑ from 0.1; regularise the larger model

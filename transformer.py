@@ -390,15 +390,26 @@ class TransformerQA(nn.Module):
 # ── Self-test ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import math
-
-    B, S_src, S_tgt, V, D = 4, 15, 20, 8000, 256
+    from config import Config
+    
+    cfg = Config()
+    B, S_src, S_tgt = 4, 15, 20
+    V = cfg.vocab_size
+    D = cfg.hidden_dim
 
     print("=" * 55)
     print("TransformerQA - self test")
     print("=" * 55)
 
     # ── Random init ──────────────────────────────────────────────
-    model = TransformerQA(vocab_size=V, hidden_dim=D)
+    model = TransformerQA(
+        vocab_size=V, 
+        hidden_dim=D,
+        num_encoder_layers=cfg.num_encoder_layers,
+        num_decoder_layers=cfg.num_decoder_layers,
+        num_heads=cfg.num_heads,
+        ff_dim=cfg.ff_dim
+    )
 
     src = torch.randint(3, V, (B, S_src))
     tgt = torch.randint(3, V, (B, S_tgt))
@@ -413,7 +424,15 @@ if __name__ == "__main__":
     w2v = np.random.randn(V, D).astype(np.float32)
     w2v /= np.linalg.norm(w2v, axis=1, keepdims=True) + 1e-8
 
-    model_w2v = TransformerQA(vocab_size=V, hidden_dim=D, embeddings=w2v)
+    model_w2v = TransformerQA(
+        vocab_size=V, 
+        hidden_dim=D,
+        num_encoder_layers=cfg.num_encoder_layers,
+        num_decoder_layers=cfg.num_decoder_layers,
+        num_heads=cfg.num_heads,
+        ff_dim=cfg.ff_dim,
+        embeddings=w2v
+    )
     logits2   = model_w2v(src, tgt)
     assert not torch.isnan(logits2).any(), "NaN with Word2Vec init"
     print(f"Word2Vec init:  OK")
@@ -438,7 +457,7 @@ if __name__ == "__main__":
     ids_b, text_b = model.generate(single_src, FakeTok(), max_length=15, beam_width=4)
     print(f"Beam search:    OK  ids={ids_b[:4]}...")
 
-    total = sum(p.numel() for p in model.parameters())
+    total = sum(p.numel() for p in model_w2v.parameters())
     print(f"\nTotal parameters: {total:,}")
     print("=" * 55)
     print("All tests passed. Ready for training.")

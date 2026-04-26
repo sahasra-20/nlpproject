@@ -63,7 +63,7 @@ def show_walkthrough():
             _, answer = model.generate(torch.tensor([ids]).to(device), tokenizer, max_length=40)
         print(f"Generated: {answer}")
         print_sep()
-        print("✓ Walkthrough finished.")
+        print("OK Walkthrough finished.")
 
     except Exception as e:
         print(f"Walkthrough Error: {e}")
@@ -72,7 +72,7 @@ def step_kb():
     print_header("STEP 1 — KNOWLEDGE BASE")
     from rag_knowledge_base import build_knowledge_base
     chunks = build_knowledge_base(verbose=True)
-    print(f"✓ Created {len(chunks):,} chunks.")
+    print(f"OK Created {len(chunks):,} chunks.")
 
 def step_train():
     print_header("STEP 2 — TRAINING")
@@ -128,7 +128,7 @@ def step_index():
     # Build the index
     retriever = RAGRetriever(model, tokenizer, config, device)
     retriever.build_index(verbose=True)
-    print("  ✓ RAG FAISS index built and saved.")
+    print("  OK RAG FAISS index built and saved.")
 
 def step_inference():
     print_header("STEP 4 — RAG INFERENCE DEMO")

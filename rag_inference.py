@@ -204,5 +204,5 @@ if __name__ == "__main__":
 
     print("\n" + "=" * 60)
     print(f"Q: {question}")
-    print(f"A: {result['answer']}")
+    print(f"A: {result['answer'].encode('ascii', 'ignore').decode('ascii')}")
     print("=" * 60)

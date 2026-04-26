@@ -356,7 +356,7 @@ def train_pipeline():
         pd.DataFrame(history).to_csv("training_history.csv", index=False)
 
     torch.save(model.state_dict(), config.model_save_path)
-    print(f"Model saved → {config.model_save_path}")
+    print(f"Model saved -> {config.model_save_path}")
     print("--- Training Complete ---")
 
 

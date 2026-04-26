@@ -98,7 +98,7 @@ def generate_answer(question_text: str, beam_width: int = 4) -> str:
         temperature        = 1.0,
         repetition_penalty = 1.3,
     )
-    print(f"A: {text}")
+    print(f"A: {text.encode('ascii', 'ignore').decode('ascii')}")
     return text
 
 
