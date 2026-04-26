@@ -17,8 +17,10 @@ venv/
 *.pth
 *.pt
 
+
 # Saved embeddings / models
 models/
+static/
 *.npy
 
 # Dataset files
