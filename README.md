@@ -53,15 +53,22 @@ python main.py
 - `seaborn` and `matplotlib` (For visualizations)
 
 ## Metrics
-bleu: 0.1295
-precisions: [0.44436095874971826, 0.25651478816946444, 0.1911714480874317, 0.15321252059308071]
-brevity_penalty: 0.5385
-length_ratio: 0.6177
-translation_length: 13309
-reference_length: 21546
 
-=== ROUGE ===
-rouge1: 0.4457
-rouge2: 0.3073
-rougeL: 0.4285
-rougeLsum: 0.4295
+### BLEU Score
+| Metric | Value |
+|--------|-------|
+| **BLEU Score** | **0.1295** |
+| Brevity Penalty | 0.5385 |
+| Length Ratio | 0.6177 |
+| Translation Length | 13,309 |
+| Reference Length | 21,546 |
+
+
+
+### ROUGE Scores
+| Metric | Score |
+|--------|-------|
+| **ROUGE-1** | 0.4457 |
+| **ROUGE-2** | 0.3073 |
+| **ROUGE-L** | 0.4285 |
+| **ROUGE-Lsum** | 0.4295 |
