@@ -13,20 +13,20 @@ class TransformerQA(nn.Module):
     def __init__(
         self,
         vocab_size,
-        hidden_dim=256,
-        num_encoder_layers=2,
-        num_decoder_layers=2,
-        num_heads=4,
-        ff_dim=512,
+        hidden_dim=384,
+        num_encoder_layers=4,
+        num_decoder_layers=4,
+        num_heads=6,
+        ff_dim=1024,
         # there is a matrix of size (256 × 512) which expands features \
         # next activation adds non-linearity W2 (512×256): compresses backreturns to the standard size so layers stack cleanly
-        dropout=0.1,
+        dropout=0.15,
         # Dropout is applied per element in each vector [256 values] words randomly become 0 with a prob of 0.1
         embeddings=None,
         pad_token_id=0,
         start_token_id=1,
         end_token_id=2,
-        max_seq_len=100
+        max_seq_len=80
     ):
         super().__init__()
         

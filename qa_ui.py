@@ -1,9 +1,40 @@
 import json
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+import torch
+
+from config import Config
+from rag_inference import answer_with_rag, build_retriever, load_model_and_tokenizer
 
 
 HOST = "127.0.0.1"
 PORT = 7860
+
+
+_rag_lock = threading.Lock()
+_rag_state = None
+
+
+def get_rag_state():
+    global _rag_state
+
+    if _rag_state is None:
+        with _rag_lock:
+            if _rag_state is None:
+                config = Config()
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                model, tokenizer = load_model_and_tokenizer(config, device)
+                retriever = build_retriever(model, tokenizer, config, device)
+                _rag_state = {
+                    "config": config,
+                    "device": device,
+                    "model": model,
+                    "tokenizer": tokenizer,
+                    "retriever": retriever,
+                }
+
+    return _rag_state
 
 
 HTML = """<!doctype html>
@@ -326,7 +357,7 @@ HTML = """<!doctype html>
         <div class="meta">
           <div class="metric"><span>Question Words</span><strong id="qWords">0</strong></div>
           <div class="metric"><span>Answer Words</span><strong id="aWords">0</strong></div>
-          <div class="metric"><span>Response Time</span><strong id="time">-</strong></div>
+          <div class="metric"><span>RAG Context</span><strong id="rag">-</strong></div>
         </div>
       </section>
     </main>
@@ -353,7 +384,7 @@ HTML = """<!doctype html>
     const statusEl = document.getElementById("status");
     const qWords = document.getElementById("qWords");
     const aWords = document.getElementById("aWords");
-    const time = document.getElementById("time");
+    const rag = document.getElementById("rag");
 
     function wordCount(text) {
       return text.trim() ? text.trim().split(/\\s+/).length : 0;
@@ -395,8 +426,6 @@ HTML = """<!doctype html>
       addMessage("You", text, "user");
       question.value = "";
       const thinkingBubble = addMessage("Assistant", "Generating answer...", "bot");
-      const started = performance.now();
-
       try {
         const response = await fetch("/api/answer", {
           method: "POST",
@@ -411,12 +440,13 @@ HTML = """<!doctype html>
 
         thinkingBubble.textContent = data.answer || "No answer returned.";
         aWords.textContent = wordCount(data.answer || "");
+        rag.textContent = data.used_rag ? `${data.context_count || 0} chunks` : "Not used";
       } catch (error) {
         thinkingBubble.textContent = error.message;
         thinkingBubble.classList.add("error");
         aWords.textContent = "0";
+        rag.textContent = "-";
       } finally {
-        time.textContent = ((performance.now() - started) / 1000).toFixed(2) + "s";
         setBusy(false);
       }
     }
@@ -437,7 +467,7 @@ HTML = """<!doctype html>
       addMessage("Assistant", "Chat cleared. Ask a new agriculture question or choose a sample query.", "bot");
       qWords.textContent = "0";
       aWords.textContent = "0";
-      time.textContent = "-";
+      rag.textContent = "-";
       question.focus();
     });
 
@@ -494,10 +524,26 @@ class QAHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            from inference import generate_answer
-
-            answer = generate_answer(question)
-            self._send_json(200, {"answer": answer})
+            rag_state = get_rag_state()
+            result = answer_with_rag(
+                question,
+                rag_state["model"],
+                rag_state["tokenizer"],
+                rag_state["retriever"],
+                rag_state["config"],
+                rag_state["device"],
+                beam_width=4,
+                verbose=False,
+            )
+            self._send_json(
+                200,
+                {
+                    "answer": result["answer"],
+                    "used_rag": result["used_rag"],
+                    "context_count": len(result["context"]),
+                    "scores": result["scores"],
+                },
+            )
         except Exception as exc:
             self._send_json(500, {"error": str(exc)})
 
