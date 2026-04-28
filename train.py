@@ -1,5 +1,5 @@
-# train.py
-# Training loop — supports BERT / Word2Vec / random embedding modes
+
+# Training loop 
 import os
 import torch
 import torch.nn as nn
@@ -21,14 +21,7 @@ from data_loader import SimpleTokenizer, get_dataloaders, get_rag_dataloaders
 # ── Embedding loader ───────────────────────────────────────────────────────────
 
 def load_embeddings(config: Config):
-    """
-    Return a (vocab_size, hidden_dim) float32 numpy array or None.
-
-    embedding_mode:
-        "bert"     → load BERT-aligned static weights (default)
-        "word2vec" → load Word2Vec weights trained on agri corpus
-        "random"   → return None (model uses Xavier random init)
-    """
+    # returns a (vocab_size, hidden_dim) numpy array or None for random init
     mode = getattr(config, "embedding_mode", "bert")
 
     if mode == "random":
@@ -41,7 +34,6 @@ def load_embeddings(config: Config):
             emb = np.load(path)
             print(f"[Embeddings] Loaded Word2Vec embeddings from {path} {emb.shape}")
             return emb
-        # Not cached — train now using word2vec.py (no extra deps needed)
         print(f"[Embeddings] Word2Vec cache not found. Training on agri corpus …")
         try:
             from word2vec import create_word2vec_embeddings
@@ -87,7 +79,6 @@ def load_embeddings(config: Config):
             print(f"[Embeddings] Loaded BERT embeddings from {path} {emb.shape}")
             return emb
 
-    # File missing or just deleted — try to regenerate
     print(f"[Embeddings] BERT file not found at {path}. Regenerating from BERT …")
     try:
         from pretrained_bert import load_bert_static_embeddings
@@ -112,6 +103,7 @@ def load_embeddings(config: Config):
 # ── Checkpoint loader ─────────────────────────────────────────────────────────
 
 def load_checkpoint(model, path: str, device):
+    
     """
     Load saved weights safely.
     - Drops PositionalEncoding buffers (deterministic, shape can change with RAG).
@@ -246,7 +238,7 @@ def train_pipeline():
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model parameters: {total_params:,}")
 
-    # 3. Build tokenizer + vocab BEFORE retriever (retriever needs the tokenizer)
+    # Build tokenizer + vocab BEFORE retriever (retriever needs the tokenizer)
     print("Building vocabulary ...")
     tokenizer = SimpleTokenizer(config)
     _df = pd.read_csv("data.csv").dropna(subset=["question", "answer"])

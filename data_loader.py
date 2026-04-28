@@ -17,7 +17,6 @@ class SimpleTokenizer:
         self.tokenizer = None
         
         self.special_tokens = ["<PAD>", "<SOS>", "<EOS>", "<UNK>", "[CTX]", "[Q]"]
-        # Dummy dicts to maintain compatibility with scripts referencing word2id directly
         self._word2id = {}
         self._id2word = {}
         
