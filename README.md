@@ -27,9 +27,9 @@ To prevent hallucinations and provide highly specific agricultural answers, a bu
 - **Inference with Context**: `rag_inference.py` prepends retrieved knowledge to the question using `[CTX]` and `[Q]` separators.
 - **Training Strategy**: 30% of training batches randomly include context blocks so the model learns both memory-based generation and reading comprehension.
 
-## 📊 Data Sources
 
-## 📊 Data Sources
+
+## Data Sources
 
 - [Kisan Call Centre (KCC)](https://www.data.gov.in/resource/kisan-call-centre-kcc-transcripts-farmers-queries-answers): Real farmer queries and expert answers.  
 - [Farmers Call Query (Kaggle)](https://www.kaggle.com/datasets/daskoushik/farmers-call-query-data-qa): Agricultural QA dataset.  
