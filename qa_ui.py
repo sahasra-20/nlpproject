@@ -334,6 +334,7 @@ HTML = """<!doctype html>
 
   <script>
     const sampleQueries = [
+      "How to control stem borer in paddy?",
       "How to treat black gram seeds?",
       "Best fertilizer for wheat",
       "How to control leaf curl in chilli",

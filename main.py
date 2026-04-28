@@ -177,7 +177,7 @@ if __name__ == "__main__":
     print_header("AGRICULTURAL QA SYSTEM — FULL ORCHESTRATOR")
     
     # Run steps in order
-    show_walkthrough()
+    # show_walkthrough()
     
     if not os.path.exists("rag_chunks.json"):
         step_kb()

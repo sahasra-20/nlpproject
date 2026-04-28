@@ -17,6 +17,7 @@ venv/
 # Model files
 *.pth
 *.pt
+*.json
 
 
 # Saved embeddings / models
