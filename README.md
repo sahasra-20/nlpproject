@@ -80,3 +80,11 @@ python main.py
 | **ROUGE-2** | 0.3073 |
 | **ROUGE-L** | 0.4285 |
 | **ROUGE-Lsum** | 0.4295 |
+
+## Results
+
+![Image 1](results/img1.png)
+![Image 2](results/img2.png)
+![Image 3](results/img3.png)
+
+
