@@ -3,8 +3,7 @@ rag_inference.py
 ────────────────
 RAG-augmented answer generation.
 
-Usage:
-    python rag_inference.py "how to control stem borer in paddy?"
+
 
 How it works:
 1. Load trained TransformerQA model

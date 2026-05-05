@@ -1,25 +1,8 @@
 """
-rag_retriever.py
-─────────────────────
+
 Retrieval engine for the RAG pipeline.
+Load chunks from rag_chunks.json (built by rag_knowledge_base.py).
 
-How it works
-────────────
-1. Load chunks from rag_chunks.json (built by rag_knowledge_base.py).
-2. Encode each chunk with YOUR OWN trained TransformerQA encoder:
-      • tokenize the chunk text
-      • run through encoder → mean-pool non-padding token representations
-      • L2-normalise to unit sphere
-3. Store all vectors in a FAISS flat-IP index (cosine similarity via
-   normalised dot product).
-4. At query time, encode the question the same way and retrieve the
-   top-k chunks whose cosine similarity exceeds `min_similarity` (0.55).
-
-No external embedding model is needed — your 256-dim encoder is the
-only component used.
-
-Usage (standalone):
-    python rag_retriever.py
 """
 
 from typing import List, Optional, Union, Dict
@@ -38,7 +21,7 @@ except ImportError:
 
 CHUNK_FILE   = "rag_chunks.json"
 INDEX_FILE   = "rag_index.faiss"
-VECTORS_FILE = "rag_vectors.npy"     # kept for debugging / inspection
+VECTORS_FILE = "rag_vectors.npy"     
 
 # ── Retrieval threshold (tunable) ─────────────────────────────────────────────
 MIN_SIMILARITY  = 0.55   # below this → skip retrieval, answer from memory
@@ -65,9 +48,10 @@ class ChunkEncoder:
         """
         Tokenise → pad/truncate → encode → mean-pool non-pad tokens → L2-norm.
         Returns a 1-D float32 numpy array of shape (hidden_dim,).
+        Converts ONE sentence → ONE vector (384,)
         """
         ids = self.tokenizer.encode(text)
-        # Use src_max_len (64) — same length the encoder was trained on
+
         seq_len = getattr(self.config, 'src_max_len', self.config.max_seq_len)
         ids = ids[:seq_len]
         ids = ids + [self.config.pad_token_id] * (seq_len - len(ids))
@@ -131,13 +115,11 @@ class RAGRetriever:
     """
     Retrieves the top-k most relevant chunks for a farmer's question.
 
-    Workflow:
         retriever = RAGRetriever(model, tokenizer, config, device)
         retriever.build_index()          # one-time, persists to disk
         # — or —
         retriever.load_index()           # load a previously built index
 
-        chunks, scores = retriever.retrieve("how to manage stem borer in paddy?")
     """
 
     def __init__(
@@ -148,8 +130,8 @@ class RAGRetriever:
         device,
         chunk_file:     str   = CHUNK_FILE,
         index_file:     str   = INDEX_FILE,
-        min_similarity: float = None,   # None → read from config.rag_min_similarity
-        top_k:          int   = None,   # None → read from config.rag_top_k
+        min_similarity: float = None,   
+        top_k:          int   = None,   
     ):
         self.encoder    = ChunkEncoder(model, tokenizer, config, device)
         self.chunk_file = chunk_file
@@ -175,6 +157,7 @@ class RAGRetriever:
         """
         Embed all chunks with the encoder and build a FAISS index.
         Results are written to INDEX_FILE and VECTORS_FILE.
+
         """
         with open(self.chunk_file, "r", encoding="utf-8") as f:
             self.chunks = json.load(f)

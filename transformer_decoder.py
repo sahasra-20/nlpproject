@@ -144,7 +144,6 @@ class TransformerDecoderLayer(nn.Module):
 
 
 class TransformerDecoder(nn.Module):
-    """Transformer Decoder: Stack of decoder layers - DECODER FOCUS"""
 
     def __init__(self, hidden_dim, num_layers=2, num_heads=4, ff_dim=512, dropout=0.1):
         super().__init__()

@@ -210,7 +210,7 @@ class TransformerQA(nn.Module):
         repetition_penalty=1.3
     ):
         """
-        Generate answer autoregressively
+        Generates answer
         
         Args:
             src_ids: (1, src_seq_len) or list of token ids
@@ -287,7 +287,6 @@ class TransformerQA(nn.Module):
             if step == 0:
                 next_logits[self.end_token_id] = float('-inf')
 
-            # Apply temperature scaling
             # temperature < 1.0: sharper distribution (more confident, less diverse)
             # temperature > 1.0: flatter distribution (more random, more diverse)
             # temperature = 1.0: unchanged
@@ -320,6 +319,7 @@ class TransformerQA(nn.Module):
     def _beam_search(self, encoder_output, src_mask_4d,
                      max_length, beam_width, repetition_penalty, device):
         beams = [(0.0, [self.start_token_id])]
+        # beams = [(score, sequence)]
         completed_beams = []
 
         for step in range(max_length):
@@ -377,10 +377,11 @@ class TransformerQA(nn.Module):
             return [], ""
 
         # Score by length-normalized log probability
-        # WHY LENGTH NORMALIZE?
+
         # Longer sequences accumulate more log probs (more negative).
         # Without normalization, beam search always prefers shorter answers.
         # Dividing by length^0.6 gives a fair comparison.
+        
         def length_penalty(beam):
             log_prob, ids = beam
             length = max(len(ids) - 1, 1)  # exclude <SOS>

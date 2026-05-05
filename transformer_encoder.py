@@ -77,7 +77,7 @@ class MultiHeadAttention(nn.Module):
 
 
 class PositionalEncoding(nn.Module):
-    """Positional encoding for transformer - ENCODER COMPONENT"""
+
 
     def __init__(self, hidden_dim, max_seq_len=100):
         super().__init__()
@@ -116,7 +116,7 @@ class PositionalEncoding(nn.Module):
 
 
 class FeedForwardNetwork(nn.Module):
-    """Feedforward network: Linear -> ReLU -> Linear - ENCODER COMPONENT"""
+    """Feedforward network: Linear -> ReLU -> Linear"""
 
     def __init__(self, hidden_dim, ff_dim=512, dropout=0.1):
         super().__init__()
@@ -142,7 +142,7 @@ class FeedForwardNetwork(nn.Module):
 
 
 class TransformerEncoderLayer(nn.Module):
-    """Single Transformer encoder layer - ENCODER FOCUS"""
+    """Single Transformer encoder layer """
 
     def __init__(self, hidden_dim, num_heads=4, ff_dim=512, dropout=0.1):
         super().__init__()
@@ -178,7 +178,7 @@ class TransformerEncoderLayer(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    """Transformer Encoder: Stack of encoder layers - ENCODER FOCUS"""
+
 
     def __init__(self, hidden_dim, num_layers=2, num_heads=4, ff_dim=512, dropout=0.1):
         super().__init__()

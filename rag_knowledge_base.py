@@ -1,20 +1,10 @@
 """
-rag_knowledge_base.py
-─────────────────────
 Builds and manages the RAG knowledge base from the KCC dataset.
-
-Each row in data.csv is already a perfect RAG chunk (10-150 words,
-domain-specific, verified).  We format every row as:
+We format every row as:
 
     "Crop: {crop}. Q: {question} A: {answer}"   (when crop is known)
     "Q: {question} A: {answer}"                 (when crop is null/unknown)
-
-The intent/topic column is intentionally omitted.
-The chunk list is persisted to rag_chunks.json so that
-rag_retriever.py can load it without touching the raw CSV again.
-
-Usage (standalone):
-    python rag_knowledge_base.py          # builds rag_chunks.json
+    # builds rag_chunks.json
 """
 
 import json
@@ -26,8 +16,8 @@ import pandas as pd
 CHUNK_FILE   = "rag_chunks.json"
 DATA_FILE    = "data.csv"
 
-# KCC answers are already short (<200 words), so we use each row as-is.
-# Only if an answer exceeds MAX_CHUNK_WORDS do we split it with overlap.
+# KCC answers are already short
+# if an answer exceeds MAX_CHUNK_WORDS do we split it with overlap.
 MAX_CHUNK_WORDS   = 200
 OVERLAP_WORDS     = 30
 
@@ -67,13 +57,9 @@ def _split_with_overlap(text: str, max_words: int, overlap: int) -> list[str]:
 
 def format_chunk(row: pd.Series) -> str:
     """
-    Convert one CSV row into a human-readable RAG chunk string.
-
+    Converts one CSV row into a RAG chunk string.
     Format (crop known):   "Crop: {crop}. Q: {question} A: {answer}"
     Format (crop unknown): "Q: {question} A: {answer}"
-
-    The intent/topic column is excluded — it adds noise without
-    improving retrieval quality for farmer-style queries.
     """
     raw_crop = row.get("crop", None)
     crop     = _clean(str(raw_crop)) if raw_crop is not None else ""
@@ -92,7 +78,7 @@ def build_knowledge_base(
     verbose: bool = True,
 ) -> list[dict]:
     """
-    Read KCC CSV, format each row as a RAG chunk, split overlong answers,
+    Reads KCC CSV, format each row as a RAG chunk, split overlong answers,
     and write the result to `chunk_file`.
 
     Returns the list of chunk dicts:
