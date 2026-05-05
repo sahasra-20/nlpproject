@@ -48,16 +48,20 @@ class TransformerQA(nn.Module):
             # assert is used to check if a condition is true while debugging
 
             self.embedding = nn.Embedding.from_pretrained(
-                torch.from_numpy(embeddings).float(),
+                torch.from_numpy(embeddings).float(), # our embedding matrix
                 padding_idx=pad_token_id,  # pad token's embedding stays zero, no gradient
                 freeze=False               # allow fine-tuning
             )
             self.use_word2vec = True
+
+            # row index must match your tokenizer’s word index.
+
         else:
             # Random initialization
             self.embedding = nn.Embedding(vocab_size, hidden_dim, padding_idx=pad_token_id)
 
             nn.init.normal_(self.embedding.weight, mean=0, std=hidden_dim ** -0.5)
+            # N(0,1/sqrt(dim)) 
             # Reset padding embedding to zero (it will not receive gradient anyway)
             with torch.no_grad():
                 self.embedding.weight[pad_token_id].fill_(0)
@@ -83,8 +87,9 @@ class TransformerQA(nn.Module):
             dropout=dropout
         )
         
-        # Output projection
         self.output_projection = nn.Linear(hidden_dim, vocab_size)
+        # (hidden_dim) → (vocab_size)
+        # scores = logits
         
         if not self.use_word2vec:
             self.output_projection.weight = self.embedding.weight
@@ -94,6 +99,7 @@ class TransformerQA(nn.Module):
         if self.use_word2vec:
             nn.init.xavier_uniform_(self.output_projection.weight)
             nn.init.zeros_(self.output_projection.bias)
+            # If using Word2Vec/pretrained bert → separate initialization
 
         self.dropout = nn.Dropout(dropout)
 
@@ -105,12 +111,15 @@ class TransformerQA(nn.Module):
         # Returns:
         #     (batch, seq_len, hidden_dim) float tensor with position information
 
+        # token IDs → meaningful vectors + position info
+
         emb = self.embedding(token_ids)
-        # Always scale embeddings so positional encodings don't dominate
+        # Always scale embeddings so positional encodings don't dominate, to Keep embedding magnitude comparable to positional encoding
         emb = emb * math.sqrt(self.hidden_dim)
         emb = self.pos_encoding(emb)
     
         emb = self.dropout(emb)
+        # Regularization ,Randomly zeroes some values
         # emb: (batch, seq_len, hidden_dim)
 
         return emb
@@ -131,12 +140,14 @@ class TransformerQA(nn.Module):
         
         # Create padding mask
         if src_mask is None:
-            src_mask = create_padding_mask(src_ids, self.pad_token_id)
+            src_mask = create_padding_mask(src_ids, self.pad_token_id) # 1 → real tokens,0 → padding With mask model ignores padding
         
         # Expand mask for multi-head attention
         src_mask_4d = src_mask.unsqueeze(1).unsqueeze(1)  # (batch_size, 1, 1, src_len)
-        
-        # Encode
+        # unsqueeze(dim) adds a new dimension of size 1 at position dim
+
+        # Attention scores # Q @ Kᵀ scores: (32, 6, 80, 80)(dimension_) so 4d mask
+
         encoder_output = self.encoder(src_emb, mask=src_mask_4d)
         
         return encoder_output,src_mask_4d

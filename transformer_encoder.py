@@ -1,14 +1,10 @@
-"""
-Transformer Encoder Components - Person 3: Transformer Encoder & Attention Mechanisms
-Independent file for encoder development without decoder dependencies
-"""
+
 import math
 import torch
 import torch.nn as nn
 
 
 class MultiHeadAttention(nn.Module):
-    """Multi-head self-attention from scratch - ENCODER IMPLEMENTATION"""
 
     def __init__(self, hidden_dim, num_heads=4, dropout=0.1):
         super().__init__()

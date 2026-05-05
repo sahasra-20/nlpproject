@@ -14,7 +14,7 @@ class Config:
     # Sequence lengths
     src_max_len = 80     #  # Max length for input questions(encoder input)
     tgt_max_len = 100   # Max length for output answers(decoder target)
-    max_seq_len = 80      # Controls what model can handle internally (affects positional encodings and attention masks)
+    max_seq_len = 100      # Controls what model can handle internally (affects positional encodings and attention masks)
 
     # ── Tokenizer special tokens ──────────────────────────────────────────────
     pad_token_id   = 0   # <PAD>
